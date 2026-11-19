@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/BulagenZ/aether-ambulance/actions/workflows/tests.yml/badge.svg)](https://github.com/BulagenZ/aether-ambulance/actions/workflows/tests.yml)
 
-**AI Fundamentals · Final Project** · Individual project by [BulagenZ](https://github.com/BulagenZ)
+**AI Fundamentals · Final Project** · Individual project by **Bulabai Bakytzhanuly** ([BulagenZ](https://github.com/BulagenZ)), Group 2 · Instructors: Aizhan Sydykova, Dilnura Ali
 
 The shortest road to the hospital may be blocked. Driving in and turning back costs minutes, while always taking the detour is slow. AETHER plans the routes, estimates how likely the road is blocked from noisy evidence, and decides whether the ambulance should **continue** or **reroute** before it commits. Four algorithms from the course work as one pipeline, and a web dashboard shows every step.
 

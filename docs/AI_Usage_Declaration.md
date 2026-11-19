@@ -2,7 +2,8 @@
 
 **Project:** AETHER — AI-Powered Ambulance Route Optimization System
 **Course:** AI Fundamentals — Final Project
-**Student:** [Your full name] · [Student ID] · [Group]
+**Student:** Bulabai Bakytzhanuly · Group 2
+**Instructors:** Aizhan Sydykova, Dilnura Ali
 
 ## Tool used
 
