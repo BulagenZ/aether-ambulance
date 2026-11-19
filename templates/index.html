@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AETHER — AI-Powered Ambulance Route Optimization System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============================== SIDEBAR ============================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 3 4 28h6l6-13 6 13h6z" fill="currentColor"/>
+        <path d="M11 20h10" stroke="#0a0e15" stroke-width="2.5"/>
+      </svg>
+      <div>
+        <div class="brand-name">AETHER</div>
+        <div class="brand-sub">Ambulance Route Optimization</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Sections">
+      <button class="nav-item active" data-view="dashboard"><span class="nav-ico">◉</span>Dashboard</button>
+      <button class="nav-item" data-view="algorithms"><span class="nav-ico">∑</span>Algorithms</button>
+      <button class="nav-item" data-view="flow"><span class="nav-ico">⇄</span>Data flow</button>
+      <button class="nav-item" data-view="results"><span class="nav-ico">✓</span>Results</button>
+      <button class="nav-item" data-view="assumptions"><span class="nav-ico">≈</span>Assumptions</button>
+      <button class="nav-item" data-view="about"><span class="nav-ico">i</span>Project info</button>
+    </nav>
+
+    <div class="sidebar-note">
+      <strong>Simulation only</strong>
+      Toy city, invented probabilities. No live traffic data and no real dispatch.
+    </div>
+  </aside>
+
+  <!-- ============================== MAIN ============================== -->
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="view-title">Dashboard</h1>
+        <p class="topbar-sub" id="view-sub">Run a scenario and watch the five stages decide the route.</p>
+      </div>
+      <div class="status" id="status" data-state="idle"><span class="status-dot"></span><span id="status-text">Connecting…</span></div>
+    </header>
+
+    <div class="banner" id="error-banner" role="alert" hidden>
+      <span id="error-text"></span>
+      <button class="banner-close" id="error-close" aria-label="Dismiss">×</button>
+    </div>
+
+    <!-- ---------------------------- DASHBOARD ---------------------------- -->
+    <section class="view active" id="view-dashboard">
+
+      <div class="card controls">
+        <div class="control-group">
+          <div class="label">Scenario</div>
+          <div class="segmented" id="scenario-picker" role="radiogroup" aria-label="Scenario"></div>
+        </div>
+
+        <div class="control-group" id="scenario-inputs">
+          <div class="label">Speed reports from the risky road <span class="muted">(oldest → newest)</span></div>
+          <div class="report-row" id="speed-toggles"></div>
+        </div>
+
+        <div class="control-group">
+          <div class="label">Traffic sensor</div>
+          <button class="chip-toggle" id="alert-toggle" aria-pressed="false">No alert</button>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-ghost" id="reset-btn">Reset</button>
+          <button class="btn btn-primary" id="run-btn">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
+            Run simulation
+          </button>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <!-- map -->
+        <div class="card map-card">
+          <div class="card-head">
+            <h2>City grid</h2>
+            <span class="tag">6 × 6 · 1 move = 1 minute</span>
+          </div>
+          <div class="map-wrap">
+            <div class="map" id="map" aria-label="City grid map"></div>
+          </div>
+          <div class="legend">
+            <span><i class="sw sw-start"></i>Ambulance start</span>
+            <span><i class="sw sw-goal"></i>Hospital</span>
+            <span><i class="sw sw-wall"></i>Closed</span>
+            <span><i class="sw sw-risky"></i>Risky road</span>
+            <span><i class="sw sw-blocked"></i>Avoided as blocked</span>
+            <span><i class="sw sw-route"></i>Planned route</span>
+            <span><i class="sw sw-old"></i>Abandoned route</span>
+          </div>
+          <div class="cell-info" id="cell-info">Click any cell to inspect it.</div>
+        </div>
+
+        <!-- right column -->
+        <div class="side-col">
+          <div class="card decision" id="decision" data-action="none">
+            <div class="label">Decision</div>
+            <div class="decision-value" id="decision-value">—</div>
+            <div class="decision-sub" id="decision-sub">Run a scenario to get a recommendation.</div>
+            <div class="ev-row">
+              <div class="ev" id="ev-continue"><span>Continue</span><b>—</b></div>
+              <div class="ev" id="ev-reroute"><span>Reroute</span><b>—</b></div>
+            </div>
+            <div class="fine">Expected value = minus expected minutes. Higher is better.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Chance the road is blocked</h2></div>
+            <div class="gauge-num"><span id="gauge-value">—</span><small id="gauge-prior"></small></div>
+            <div class="gauge" id="gauge">
+              <div class="gauge-fill" id="gauge-fill"></div>
+              <div class="gauge-mark" id="gauge-mark" hidden><span id="gauge-mark-label"></span></div>
+            </div>
+            <div class="gauge-scale"><span>0</span><span>0.5</span><span>1</span></div>
+            <div class="label mt">Inferred traffic sequence</div>
+            <div class="traffic-seq" id="traffic-seq"><span class="muted">—</span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Travel time comparison</h2><span class="tag">minutes</span></div>
+            <div class="bars" id="time-bars">
+              <div class="bar-row" data-key="fast"><span class="bar-name">Fast road, clear</span><div class="bar-track"><div class="bar-fill"></div></div><b>—</b></div>
+              <div class="bar-row" data-key="detour"><span class="bar-name">Detour</span><div class="bar-track"><div class="bar-fill"></div></div><b>—</b></div>
+              <div class="bar-row" data-key="back"><span class="bar-name">Drive in, turn back</span><div class="bar-track"><div class="bar-fill"></div></div><b>—</b></div>
+            </div>
+            <div class="fine" id="time-note">Computed by A* in stage 1.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Algorithm execution</h2>
+          <span class="tag" id="run-tag">Not run yet</span>
+        </div>
+        <ol class="stages" id="stages"></ol>
+      </div>
+    </section>
+
+    <!-- ---------------------------- ALGORITHMS ---------------------------- -->
+    <section class="view" id="view-algorithms">
+      <div class="algo-grid">
+        <article class="card algo">
+          <div class="algo-head"><span class="num">1 · 5</span><h2>A* search</h2><span class="tag">Lecture 2 · Informed search</span></div>
+          <p><b>Job here:</b> find the fastest route to the hospital, and later the detour.</p>
+          <p><b>How it works:</b> it keeps a priority queue of cells and always expands the one with the lowest <code>f = g + h</code>. <code>g</code> is minutes driven so far; <code>h</code> is the Manhattan distance to the hospital.</p>
+          <p><b>Why it fits:</b> Manhattan distance never overestimates on a four-direction grid, so the route is guaranteed shortest while fewer cells are expanded than with BFS.</p>
+          <div class="formula">f(n) = g(n) + h(n)</div>
+          <div class="fine">Code: <code>astar.py</code></div>
+        </article>
+
+        <article class="card algo">
+          <div class="algo-head"><span class="num">2</span><h2>HMM · Viterbi</h2><span class="tag">Lecture 7 · Hidden Markov Models</span></div>
+          <p><b>Job here:</b> work out whether traffic on the risky road is Flowing or Jammed from three speed reports.</p>
+          <p><b>How it works:</b> for every time step and hidden state it stores the probability of the best state sequence ending there, then backtracks from the best final state.</p>
+          <p><b>Why it fits:</b> the traffic state cannot be seen directly, only noisy reports, and it tends to persist. That is a hidden Markov model.</p>
+          <div class="formula">V<sub>t</sub>(s) = max<sub>p</sub> V<sub>t−1</sub>(p) · T(p→s) · E(s, o<sub>t</sub>)</div>
+          <div class="fine">Code: <code>viterbi.py</code></div>
+        </article>
+
+        <article class="card algo">
+          <div class="algo-head"><span class="num">3</span><h2>Bayesian inference</h2><span class="tag">Lecture 6 · Probability &amp; Bayes</span></div>
+          <p><b>Job here:</b> update the chance that the road is blocked after one sensor reading.</p>
+          <p><b>How it works:</b> multiply the prior by how likely the reading is in each case, then normalise.</p>
+          <p><b>Why it fits:</b> the sensor gives false alarms and misses, so one reading should shift the belief, not replace it.</p>
+          <div class="formula">P(Blocked | obs) = P(obs | Blocked) · P(Blocked) / P(obs)</div>
+          <div class="fine">Code: <code>bayes.py</code></div>
+        </article>
+
+        <article class="card algo">
+          <div class="algo-head"><span class="num">4</span><h2>Markov decision process</h2><span class="tag">MDP &amp; RL lecture</span></div>
+          <p><b>Job here:</b> choose between Continue and Reroute.</p>
+          <p><b>How it works:</b> states are Clear and Blocked, reward is minus minutes. One Bellman update gives Q(s, a); the Q-values are then weighted by the belief from Bayes and the higher one wins.</p>
+          <p><b>Why it fits:</b> driving on has an uncertain outcome, so the agent must compare expected values rather than best cases.</p>
+          <div class="formula">Q(s,a) = Σ<sub>s′</sub> T(s′|s,a) · [ R(a,s′) + γ·V(s′) ]</div>
+          <div class="fine">Code: <code>mdp.py</code>. V starts at 0, so γ has no effect in this one-step version.</div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ---------------------------- DATA FLOW ---------------------------- -->
+    <section class="view" id="view-flow">
+      <div class="card">
+        <div class="card-head"><h2>How information moves between the algorithms</h2><span class="tag" id="flow-tag">Run a scenario to fill in live values</span></div>
+        <div class="flow">
+          <div class="flow-node" style="grid-area:astar"><span class="num">1</span><b>A* search</b><small>plans the fastest route</small></div>
+          <div class="flow-link down" style="grid-area:l1"><span>travel times</span><b id="flow-times">—</b></div>
+
+          <div class="flow-node" style="grid-area:vit"><span class="num">2</span><b>Viterbi</b><small>reads the traffic state</small></div>
+          <div class="flow-link" style="grid-area:l2"><span>prior P(Blocked)</span><b id="flow-prior">—</b></div>
+          <div class="flow-node" style="grid-area:bayes"><span class="num">3</span><b>Bayes</b><small>adds the sensor reading</small></div>
+          <div class="flow-link" style="grid-area:l3"><span>P(Blocked)</span><b id="flow-post">—</b></div>
+          <div class="flow-node" style="grid-area:mdp"><span class="num">4</span><b>MDP</b><small>compares expected values</small></div>
+          <div class="flow-link" style="grid-area:l4"><span>decision</span><b id="flow-action">—</b></div>
+          <div class="flow-node" style="grid-area:replan"><span class="num">5</span><b>A* re-plan</b><small>final route</small></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>What each hand-off means</h2></div>
+        <table class="table">
+          <thead><tr><th>From</th><th>To</th><th>What is passed</th><th>Why it matters</th></tr></thead>
+          <tbody>
+            <tr><td>A*</td><td>MDP</td><td>Three travel times</td><td>They become the MDP's rewards, so the decision is about real route lengths.</td></tr>
+            <tr><td>Viterbi</td><td>Bayes</td><td>Current traffic state</td><td>Jammed traffic gives a higher prior than Flowing traffic.</td></tr>
+            <tr><td>Bayes</td><td>MDP</td><td>P(Blocked)</td><td>It is the belief used to weight the Q-values.</td></tr>
+            <tr><td>MDP</td><td>A*</td><td>Continue or Reroute</td><td>Reroute makes A* search again with the risky road closed.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------------------------- RESULTS ---------------------------- -->
+    <section class="view" id="view-results">
+      <div class="callout">
+        <b>How these results were produced</b>
+        Computed by <code>evaluate.py</code> on the server when this page loads. The simulated trips are drawn from the same invented model the agent uses, so they check that the decision logic is sound. They do not measure real-world performance.
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Policy comparison: average travel time</h2>
+          <span class="tag" id="res-tag">Loading…</span>
+        </div>
+        <div class="policy-bars" id="policy-bars"><span class="muted">Loading results from the backend…</span></div>
+        <div class="table-wrap wide mt"><table class="table" id="policy-table"></table></div>
+        <div class="fine">“Hit a blocked road” means the ambulance drove in, found the road blocked and had to turn back (19 minutes). Perfect knowledge is a lower bound that no real agent can reach.</div>
+      </div>
+
+      <div class="results-grid">
+        <div class="card">
+          <div class="card-head"><h2>A* vs BFS on the same map</h2><span class="tag">search</span></div>
+          <div class="table-wrap wide"><table class="table" id="search-table"></table></div>
+          <div class="fine">Both always find routes of the same length. A* expands fewer cells when the heuristic points the right way; around the wall it has to explore as much as BFS.</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Automated tests</h2><span class="tag">python -m unittest -v</span></div>
+          <ul class="checklist">
+            <li>A* gives the same route length as BFS on 300 random maps</li>
+            <li>Viterbi matches a brute-force check of every state sequence</li>
+            <li>Bayes results match hand calculations and always sum to 1</li>
+            <li>MDP Q-values match hand calculations; the decision flips exactly at the threshold</li>
+            <li>The three scenarios give the same answers as the console program</li>
+            <li>The web API rejects bad input with clear error messages</li>
+            <li>AETHER beats every simple rule in the trip simulation</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Decision for every possible input</h2><span class="tag">8 speed patterns × 2 sensor readings</span></div>
+        <div class="table-wrap wide"><table class="table" id="inputs-table"></table></div>
+      </div>
+    </section>
+
+    <!-- ---------------------------- ASSUMPTIONS ---------------------------- -->
+    <section class="view" id="view-assumptions">
+      <div class="callout">
+        <b>Every value on this page is invented for a toy model.</b>
+        None of it is measured traffic data. The tables are read from the Python code at start-up, so they always match what the algorithms use.
+      </div>
+      <div class="assume-grid" id="assumptions"></div>
+    </section>
+
+    <!-- ---------------------------- ABOUT ---------------------------- -->
+    <section class="view" id="view-about">
+      <div class="about-grid">
+        <div class="card prose">
+          <h2>The real-world problem</h2>
+          <p>An ambulance usually takes the shortest road. If that road turns out to be blocked, the crew loses time driving in, turning round and taking the long way. Taking the long way every time is safe but slow.</p>
+          <p>The right choice depends on how likely the blockage is, and that is uncertain: traffic reports are indirect and sensors make mistakes.</p>
+          <h2>What AETHER does</h2>
+          <p>It plans a route, estimates the chance the shortest road is blocked from noisy evidence, and decides whether to drive on or reroute before the ambulance commits.</p>
+          <h2>What it is not</h2>
+          <ul>
+            <li>It does not use real-time or historical traffic data.</li>
+            <li>It is not connected to any emergency dispatch service.</li>
+            <li>It must not be used to make real routing decisions.</li>
+          </ul>
+        </div>
+
+        <div class="card prose">
+          <h2>Course project</h2>
+          <p>Final project for <b>AI Fundamentals</b>. It combines four algorithms from four course lectures (search, Bayesian reasoning, hidden Markov models and MDPs), with A* used twice, in one chained pipeline.</p>
+          <h2>How it is built</h2>
+          <ul>
+            <li><b>Backend:</b> Python and Flask. The algorithms live in <code>astar.py</code>, <code>viterbi.py</code>, <code>bayes.py</code> and <code>mdp.py</code>.</li>
+            <li><b>Frontend:</b> HTML, CSS and JavaScript. It only draws what the backend returns.</li>
+            <li><b>Tests:</b> <code>python -m unittest -v</code> checks each algorithm, the three scenarios and the web API.</li>
+          </ul>
+          <h2>Limitations and next steps</h2>
+          <ul>
+            <li>Only one road is uncertain. A real city needs a belief for every road.</li>
+            <li>The probabilities are invented. They could be learned from data.</li>
+            <li>The MDP looks one step ahead. Value iteration over the whole trip would let the agent re-decide at every cell.</li>
+            <li>The rush-hour decision is close (one minute), so it is sensitive to the assumed numbers.</li>
+          </ul>
+          <p class="fine">Code written with AI assistance (Claude). Every step prints its intermediate numbers so they can be re-derived by hand.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

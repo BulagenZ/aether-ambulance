@@ -1,137 +1,158 @@
 # AETHER — AI-Powered Ambulance Route Optimization System
 
-AI Fundamentals final project. A simulated ambulance must reach the hospital as fast as possible,
-but the shortest road may be blocked. AETHER plans a route, estimates how likely the road is blocked,
-and decides whether to drive on or take the detour. Results are shown in a web dashboard.
+[![Tests](https://github.com/BulagenZ/aether-ambulance/actions/workflows/tests.yml/badge.svg)](https://github.com/BulagenZ/aether-ambulance/actions/workflows/tests.yml)
 
-> **Simulation only.** The city map, probabilities and rewards are invented for a toy model.
-> AETHER uses no real-time or historical traffic data and is not connected to any dispatch service.
+**AI Fundamentals · Final Project** · Individual project by [BulagenZ](https://github.com/BulagenZ)
 
-## Install (Windows)
+The shortest road to the hospital may be blocked. Driving in and turning back costs minutes, while always taking the detour is slow. AETHER plans the routes, estimates how likely the road is blocked from noisy evidence, and decides whether the ambulance should **continue** or **reroute** before it commits. Four algorithms from the course work as one pipeline, and a web dashboard shows every step.
 
-1. Install Python 3.10 or newer from python.org. Tick **"Add python.exe to PATH"** during setup.
-2. Open the project folder in File Explorer, click the address bar, type `cmd` and press Enter.
-3. Install Flask (once):
+> **Simulation only.** The map, probabilities and rewards are invented for a teaching model. AETHER uses no real traffic data and is not connected to any emergency dispatch service.
+
+![AETHER dashboard after the Rush hour scenario](docs/screenshots/01-dashboard-rush.png)
+
+## Deliverables
+
+| Deliverable | Where |
+|---|---|
+| Working application | This repository: `run.bat` or `python app.py` (see [Quick start](#quick-start)) |
+| Technical report | [docs/AETHER_Technical_Report.pdf](docs/AETHER_Technical_Report.pdf) ([Word version](docs/AETHER_Technical_Report.docx)) |
+| Presentation (7 slides) | [docs/AETHER_Presentation.pptx](docs/AETHER_Presentation.pptx) |
+| Demo video (2.5 min) | [docs/demo/AETHER_demo.mp4](docs/demo/AETHER_demo.mp4) |
+| AI usage declaration | [docs/AI_Usage_Declaration.md](docs/AI_Usage_Declaration.md) |
+| Team contribution statement | [docs/Team_Contribution_Statement.md](docs/Team_Contribution_Statement.md) |
+| Screenshots | [docs/screenshots/](docs/screenshots/) |
+
+## Quick start
+
+Requires **Python 3.10 or newer** ([python.org](https://www.python.org/downloads/); tick *Add python.exe to PATH* during setup).
+
+**Get the code:** click **Code → Download ZIP** above and unzip it, or clone it:
+
+```bash
+git clone https://github.com/BulagenZ/aether-ambulance.git
+```
+
+**Windows, one click:** open the folder and double-click `run.bat`. It installs Flask the first time, starts the server and opens the browser.
+
+**Any system, from a terminal in this folder:**
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-## Run the website
-
 ```bash
 python app.py
 ```
 
-Then open <http://127.0.0.1:5000> in a browser. Keep the terminal window open while you use the site.
-Press `Ctrl+C` in the terminal to stop it.
+Then open <http://127.0.0.1:5000>. Keep the terminal open while using the site; press `Ctrl+C` to stop. If port 5000 is busy, set another port first (Windows: `set PORT=5050`, macOS/Linux: `export PORT=5050`).
 
-If port 5000 is busy, choose another one first: `set PORT=5050` and then `python app.py`.
-
-## Run the original console program
-
-```bash
-python main.py
-```
-
-Use `python main.py calm` or `python main.py mixed` for the other scenarios.
-
-## Run the tests
-
-```bash
-python -m unittest -v
-```
-
-27 tests: each algorithm against hand-computed values, the three scenarios, a check that the website
-returns exactly the same results as the console program, and the web API including bad input.
+| Command | What it does |
+|---|---|
+| `python -m unittest -v` | Runs the 39 automated tests |
+| `python evaluate.py` | Prints the evaluation: A* vs BFS, all 16 inputs, 10,000-trip policy comparison |
+| `python main.py rush` | Console version (also `calm` and `mixed`) |
 
 ## Using the dashboard
 
-1. Pick a scenario: **Rush hour**, **Quiet night** or **Jam history, silent sensor**.
-   Changing a speed report or the sensor switches to **Custom**, which is computed live by the backend.
-2. Press **Run simulation**. The five stages run in order and the map updates.
+1. Pick a scenario — **Rush hour**, **Quiet night** or **Jam history, silent sensor** — or toggle the speed reports and sensor to build a **Custom** one.
+2. Press **Run simulation**. The five stages run on the Python backend; the map, decision panel, probability gauge and travel-time bars update, and each stage card shows its input, calculation, output and explanation.
 3. Click any map cell to inspect it. **Reset** clears the run.
-4. Use the sidebar for **Algorithms**, **Data flow**, **Assumptions** and **Project info**.
+4. The sidebar opens **Algorithms**, **Data flow**, **Results**, **Assumptions** and **Project info**.
 
-## How the algorithms work together
+## The algorithms and how they work together
 
 | Stage | Algorithm (course topic) | Input | Output passed on |
-|------|--------------------------|-------|------------------|
-| 1 | **A\*** (informed search) | 6×6 map, start, hospital | Fastest route (5 min), detour (15 min), turn-back cost (19 min) |
-| 2 | **Viterbi on an HMM** (reasoning over time) | Three speed reports from the risky road | Current traffic state, which sets the prior P(Blocked) |
-| 3 | **Bayes' rule** (probabilistic reasoning) | Prior from stage 2 + one sensor reading | Posterior P(Blocked) |
-| 4 | **MDP, one Bellman update** (sequential decisions) | P(Blocked) from stage 3 + travel times from stage 1 | Continue or Reroute |
-| 5 | **A\*** again | The MDP's decision | Final route |
+|---|---|---|---|
+| 1 | **A\* search** (Lecture 2: informed search) | 6×6 map, start, hospital | Fastest route 5 min, detour 15 min, turn-back cost 19 min |
+| 2 | **HMM + Viterbi** (Lecture 7: hidden Markov models) | Three speed reports | Current traffic state → prior P(Blocked) |
+| 3 | **Bayes' rule** (Lecture 6: probability and Bayesian networks) | Prior + one sensor reading | Posterior P(Blocked) |
+| 4 | **MDP, Bellman update** (MDP and reinforcement learning) | P(Blocked) + travel times | Continue or Reroute |
+| 5 | **A\* re-plan** | The decision | Final route |
 
-The MDP's rewards are the A\* travel times, its belief is the Bayes posterior, the Bayes prior comes
-from Viterbi, and the MDP's decision triggers the A\* re-plan.
+The MDP's rewards are the A\* travel times, its belief is the Bayes posterior, the Bayes prior comes from Viterbi, and a Reroute decision makes A\* search again. Changing any input changes every later stage.
+
+- **A\*** expands the cell with the lowest `f = g + h` (`g` = minutes so far, `h` = Manhattan distance). The heuristic never overestimates on a 4-direction grid, so the route is optimal.
+- **Viterbi** finds the most likely hidden traffic sequence (Flowing/Jammed) by dynamic programming: `V_t(s) = max_p V_{t-1}(p)·T(p→s)·E(s,o_t)`.
+- **Bayes' rule** updates the blockage probability: `P(B|obs) = P(obs|B)·P(B) / P(obs)`.
+- **MDP:** one Bellman update `Q(s,a) = Σ T(s'|s,a)·[R(a,s') + γV(s')]`, weighted by the Bayes belief; the higher expected value wins.
 
 ## Results
 
-| Scenario | Speed reports | Sensor | P(Blocked) | Continue | Reroute | Decision |
-|----------|---------------|--------|-----------:|---------:|--------:|----------|
-| Rush hour (`rush`) | fast, slow, slow | alert    | 0.857 | -16.00 | -15.00 | Reroute (15 min) |
-| Quiet night (`calm`) | fast, fast, fast | no alert | 0.012 |  -6.54 | -15.00 | Continue (5 min) |
-| Jam history, silent sensor (`mixed`) | slow, slow, slow | no alert | 0.069 |  -7.17 | -15.00 | Continue (5 min) |
+| Scenario | Speed reports | Sensor | P(Blocked) | EV Continue | EV Reroute | Decision |
+|---|---|---|---:|---:|---:|---|
+| Rush hour | fast, slow, slow | alert | 0.857 | −16.00 | −15.00 | **Reroute** (15 min) |
+| Quiet night | fast, fast, fast | none | 0.012 | −6.54 | −15.00 | **Continue** (5 min) |
+| Jam history, silent sensor | slow, slow, slow | none | 0.069 | −7.17 | −15.00 | **Continue** (5 min) |
 
-The agent reroutes only when P(Blocked) is above about 0.77. The rush-hour decision is close
-(1 minute), which shows the model is sensitive to the assumed numbers.
+The agent reroutes only when P(Blocked) > 0.77.
 
-## The algorithms
+**Policy comparison, 10,000 simulated trips (seed 7):**
 
-### A* search (`astar.py`)
-- **How:** keeps a priority queue of cells ordered by `f = g + h`, where `g` is minutes driven so far
-  and `h` is the Manhattan distance to the hospital. It always expands the lowest `f`.
-- **Why here:** Manhattan distance never overestimates on a 4-direction grid, so A\* returns the
-  shortest route while expanding fewer cells than BFS.
+| Policy | Mean minutes | Hit a blocked road |
+|---|---:|---:|
+| **AETHER** (Viterbi + Bayes + MDP) | **9.12** | 15.1% |
+| Always continue | 9.23 | 30.2% |
+| Trust the sensor (reroute on alert) | 9.28 | 8.4% |
+| Always reroute | 15.00 | 0.0% |
+| Perfect knowledge (lower bound) | 8.02 | 0.0% |
 
-### Viterbi (`viterbi.py`)
-- **How:** for each time step and each hidden state it stores the probability of the best state
-  sequence ending there, then backtracks from the best final state.
-- **Why here:** traffic (Flowing/Jammed) cannot be seen directly, only noisy speed reports, and it
-  tends to persist over time. That is a hidden Markov model.
+The trips are drawn from the same invented model the agent uses, so this checks that the decision logic is sound, not real-world performance. A\* expands 6 cells for the fastest route where BFS expands 13 (both find 5 minutes).
 
-### Bayes' rule (`bayes.py`)
-- **How:** `P(Blocked | obs) = P(obs | Blocked) * P(Blocked) / P(obs)`.
-- **Why here:** the sensor gives false alarms (10%) and misses (10%), so one reading should update
-  the belief instead of being trusted blindly.
+## Testing
 
-### MDP (`mdp.py`)
-- **How:** states {Clear, Blocked}, actions {Continue, Reroute}, reward = minus minutes.
-  One Bellman update gives `Q(s,a) = sum T(s'|s,a) * [R(a,s') + gamma * V(s')]` with `V = 0`
-  (so `gamma` has no effect in this one-step version). The Q-values are then weighted by the belief from Bayes.
-- **Why here:** driving on has an uncertain outcome (5 min if clear, 19 min if blocked), so the
-  agent must compare expected values rather than best cases.
+`python -m unittest -v` runs **39 tests**, all passing:
+
+- every algorithm against hand-computed values;
+- A\* against BFS on 300 random maps, and Viterbi against a brute-force check of every state sequence;
+- properties: Bayes posteriors sum to 1, and the MDP decision flips exactly at the threshold;
+- the website returns exactly the same results as the console program for all three scenarios;
+- the web API, including 7 kinds of invalid input (HTTP 400), unknown paths (404) and wrong methods (405);
+- the evaluation: all 16 inputs covered, and AETHER beats every simple rule for three random seeds.
+
+The tests run automatically on GitHub after every push, on Windows and Linux with Python 3.10 and 3.12 (see the badge at the top and the **Actions** tab). The frontend was also checked in a browser: every button, all pages, the error banner and the phone layout.
 
 ## Project structure
 
 ```
-astar.py, viterbi.py, bayes.py, mdp.py   the four algorithms (unchanged by the website)
-main.py                                  console program, scenarios and all assumed numbers
-pipeline.py                              runs the same five stages and returns the results as data
-app.py                                   Flask server: the page, /api/config and /api/simulate
-templates/index.html                     page structure
-static/style.css, static/app.js          design and interaction (draws backend results only)
-test_project.py, test_web.py             tests
-requirements.txt                         Flask
+astar.py  viterbi.py  bayes.py  mdp.py   the four algorithms (pure Python, standard library only)
+bfs.py                                   BFS baseline used to evaluate A*
+main.py                                  console program, the three scenarios and every assumed value
+pipeline.py                              runs the five stages and returns all intermediate results
+evaluate.py                              testing and results: search comparison, all inputs, policy comparison
+app.py                                   Flask server: page + JSON API with error handling
+templates/index.html                     dashboard structure
+static/style.css, static/app.js          design and drawing (no results are computed in the browser)
+test_project.py  test_web.py  test_evaluation.py    39 automated tests
+run.bat                                  one-click launcher for Windows
+.github/workflows/tests.yml              runs the tests on GitHub after every push
+docs/                                    report, slides, video, screenshots, declarations
 ```
 
 ## Web API
 
-- `GET /api/config` returns the map, scenarios and every assumed value.
-- `POST /api/simulate` with `{"scenario": "rush"}` (or `calm`, `mixed`) runs the pipeline.
-  A custom run uses `{"custom": {"speeds": ["fast", "slow", "slow"], "alert": true}}`.
-  Invalid input returns status 400 with an `error` message.
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/config` | Map, scenarios and every assumed value |
+| `POST /api/simulate` | `{"scenario": "rush"}` (or `calm`, `mixed`), or `{"custom": {"speeds": ["fast","slow","slow"], "alert": true}}` |
+| `GET /api/evaluate` | Search comparison, all 16 inputs, policy comparison |
 
-## Limitations and possible improvements
+Invalid input returns HTTP 400 with an `error` message.
+
+## Screenshots
+
+| Results | Algorithms |
+|---|---|
+| ![Results page](docs/screenshots/04-results.png) | ![Algorithms page](docs/screenshots/06-algorithms.png) |
+| **Stage-by-stage calculations** | **Phone layout** |
+| ![Stage cards](docs/screenshots/02-stages-rush.png) | ![Phone layout](docs/screenshots/09-mobile.png) |
+
+## Limitations and future work
 
 - Only one road is uncertain; a real city needs a belief for every road.
-- The numbers are invented; they could be learned from real traffic data (classical ML).
-- The MDP looks one step ahead; value iteration over the whole trip would allow re-deciding at every cell.
-- Repeated sensor readings could be combined over time with the HMM forward algorithm.
-- The Flask server is the built-in development server, meant for local demonstration only.
+- The numbers are invented; they could be learned from traffic data (classical ML, Lecture 8).
+- The MDP looks one step ahead; value iteration over the whole trip would let the agent re-decide at every intersection.
+- Viterbi passes on only the most likely state; the forward algorithm could pass the full belief.
 
-## AI assistance
+## AI usage
 
-The code was written with help from Claude (Anthropic). Every function is short and commented, and
-each stage shows its intermediate numbers so they can be re-derived by hand and explained.
+This project was developed with the assistance of Claude (Anthropic). See [docs/AI_Usage_Declaration.md](docs/AI_Usage_Declaration.md).

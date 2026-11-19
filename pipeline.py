@@ -5,6 +5,7 @@ Nothing is re-implemented here: the algorithms come from astar.py, viterbi.py,
 bayes.py and mdp.py, and every assumed number comes from main.py.
 """
 from astar import astar, find
+from bfs import bfs
 from bayes import posterior_blocked
 from main import (
     GAMMA,
@@ -21,7 +22,6 @@ from main import (
     SCENARIOS,
 )
 from mdp import ACTIONS, STATES, bellman_q, build_rewards, decide
-
 from viterbi import viterbi
 
 SPEED_VALUES = ("fast", "slow")
@@ -75,6 +75,7 @@ def simulate(scenario):
     if fast_path is None:
         raise RuntimeError("No route from the start to the hospital.")
     fast_min = len(fast_path) - 1
+    _, bfs_expanded = bfs(GRID, start, goal)   # baseline only, to show what the heuristic saves
 
     detour_path, detour_expanded = astar(GRID, start, goal, extra_blocked=[RISKY_ROAD])
     if detour_path is None:
@@ -110,6 +111,7 @@ def simulate(scenario):
         "astar": {
             "path": fast_path,
             "expanded": expanded,
+            "bfs_expanded": bfs_expanded,
             "minutes": fast_min,
             "uses_risky": RISKY_ROAD in fast_path,
             "detour_path": detour_path,

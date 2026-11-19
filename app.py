@@ -1,16 +1,21 @@
 """AETHER - web dashboard for the Mini Ambulance Route Assistant.
 
-Run:   python app.py
+Run:   python app.py          (add --open to open the browser automatically)
 Open:  http://127.0.0.1:5000
 
 The browser only draws results. Every number comes from the Python algorithm
 modules through pipeline.py.
 """
 import os
+import sys
+import threading
+import webbrowser
+from functools import lru_cache
 
 from flask import Flask, jsonify, render_template, request
 from werkzeug.exceptions import HTTPException
 
+from evaluate import evaluate
 from pipeline import ScenarioError, config, resolve_scenario, simulate
 
 app = Flask(__name__)
@@ -39,6 +44,16 @@ def api_simulate():
     return jsonify(simulate(scenario))
 
 
+@lru_cache(maxsize=1)
+def _evaluation():
+    return evaluate()
+
+
+@app.get("/api/evaluate")
+def api_evaluate():
+    return jsonify(_evaluation())
+
+
 @app.errorhandler(HTTPException)
 def http_error(exc):
     if request.path.startswith("/api/"):
@@ -54,5 +69,8 @@ def unexpected_error(exc):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5000"))
-    print(f"AETHER is running. Open http://127.0.0.1:{port} in your browser. Press Ctrl+C to stop.")
+    url = f"http://127.0.0.1:{port}"
+    print(f"AETHER is running. Open {url} in your browser. Press Ctrl+C to stop.")
+    if "--open" in sys.argv:
+        threading.Timer(1.2, webbrowser.open, args=[url]).start()
     app.run(host="127.0.0.1", port=port, debug=False)
