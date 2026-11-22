@@ -66,18 +66,24 @@ def reroute_threshold(q):
     return p if 0 <= p <= 1 else None
 
 
+def _expansion(cell, g, h):
+    return {"cell": cell, "g": g, "h": h, "f": g + h}
+
+
 def simulate(scenario):
     """Run all five stages for one scenario and return the full trace."""
     start, goal = find(GRID, "S"), find(GRID, "H")
 
     # ---- 1. A*: fastest route, plus the two travel times the MDP needs
-    fast_path, expanded = astar(GRID, start, goal)
+    # The traces record the order in which cells are expanded, so the website can replay the search.
+    search_trace, bfs_trace, detour_trace = [], [], []
+    fast_path, expanded = astar(GRID, start, goal, trace=search_trace)
     if fast_path is None:
         raise RuntimeError("No route from the start to the hospital.")
     fast_min = len(fast_path) - 1
-    _, bfs_expanded = bfs(GRID, start, goal)   # baseline only, to show what the heuristic saves
+    _, bfs_expanded = bfs(GRID, start, goal, trace=bfs_trace)   # baseline only, to show what the heuristic saves
 
-    detour_path, detour_expanded = astar(GRID, start, goal, extra_blocked=[RISKY_ROAD])
+    detour_path, detour_expanded = astar(GRID, start, goal, extra_blocked=[RISKY_ROAD], trace=detour_trace)
     if detour_path is None:
         raise RuntimeError("No detour exists around the risky road.")
     detour_min = len(detour_path) - 1
@@ -120,6 +126,11 @@ def simulate(scenario):
             "turn_cell": turn_cell,
             "minutes_to_turn": minutes_to_turn,
             "backtrack_minutes": backtrack_min,
+            # drive to the cell before the risky road, find it blocked, then follow the A* route back
+            "turn_back_path": fast_path[:minutes_to_turn + 1] + back_path[1:],
+            "search": [_expansion(c, g, h) for c, g, h in search_trace],
+            "detour_search": [_expansion(c, g, h) for c, g, h in detour_trace],
+            "bfs_search": bfs_trace,
         },
         "viterbi": {
             "observations": speeds,

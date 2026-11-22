@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AETHER — AI-Powered Ambulance Route Optimization System</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0e15'/%3E%3Cpath d='M16 5 6 27h5l5-11 5 11h5z' fill='%233fd9ff'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -23,6 +24,7 @@
     </div>
 
     <nav class="nav" aria-label="Sections">
+      <span class="nav-indicator" id="nav-indicator" aria-hidden="true"></span>
       <button class="nav-item active" data-view="dashboard"><span class="nav-ico">◉</span>Dashboard</button>
       <button class="nav-item" data-view="algorithms"><span class="nav-ico">∑</span>Algorithms</button>
       <button class="nav-item" data-view="flow"><span class="nav-ico">⇄</span>Data flow</button>
@@ -75,8 +77,34 @@
           <button class="btn btn-ghost" id="reset-btn">Reset</button>
           <button class="btn btn-primary" id="run-btn">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
-            Run simulation
+            <span>Run simulation</span>
           </button>
+        </div>
+
+        <!-- playback controls for the five stages (shown after a run starts) -->
+        <div class="player" id="player" hidden>
+          <div class="player-buttons">
+            <button class="icon-btn" id="pl-toggle" aria-label="Pause"><span class="ico-pause" aria-hidden="true"></span></button>
+            <button class="btn btn-ghost sm" id="pl-next" title="Jump to the next stage">Next stage ⏭</button>
+            <button class="btn btn-ghost sm" id="pl-skip" title="Show the final result">Skip to end</button>
+            <button class="btn btn-ghost sm" id="pl-replay" title="Play the run again">Replay ↺</button>
+          </div>
+          <ol class="player-ticks" id="pl-ticks" aria-label="Jump to a stage">
+            <li><button class="tick" data-stage="0"><b>1</b><span>A*</span></button></li>
+            <li><button class="tick" data-stage="1"><b>2</b><span>Viterbi</span></button></li>
+            <li><button class="tick" data-stage="2"><b>3</b><span>Bayes</span></button></li>
+            <li><button class="tick" data-stage="3"><b>4</b><span>MDP</span></button></li>
+            <li><button class="tick" data-stage="4"><b>5</b><span>Re-plan</span></button></li>
+          </ol>
+          <div class="player-options">
+            <div class="segmented sm" id="pl-speed" role="radiogroup" aria-label="Playback speed">
+              <button data-speed="0.5" role="radio" aria-checked="false">0.5×</button>
+              <button data-speed="1" role="radio" aria-checked="true">1×</button>
+              <button data-speed="2" role="radio" aria-checked="false">2×</button>
+            </div>
+            <label class="check"><input type="checkbox" id="pl-step"> Pause after each stage</label>
+          </div>
+          <div class="player-progress" aria-hidden="true"><div class="player-progress-fill" id="pl-fill"></div></div>
         </div>
       </div>
 
@@ -85,19 +113,27 @@
         <div class="card map-card">
           <div class="card-head">
             <h2>City grid</h2>
-            <span class="tag">6 × 6 · 1 move = 1 minute</span>
+            <div class="card-head-tools">
+              <button class="chip-toggle sm" id="bfs-toggle" aria-pressed="false" title="Replay BFS next to A* to compare how many cells each one explores">Compare with BFS</button>
+              <span class="tag">6 × 6 · 1 move = 1 minute</span>
+            </div>
           </div>
           <div class="map-wrap">
             <div class="map" id="map" aria-label="City grid map"></div>
           </div>
+          <div class="map-stats" id="map-stats" aria-live="polite">Press Run simulation to watch A* search the map.</div>
           <div class="legend">
             <span><i class="sw sw-start"></i>Ambulance start</span>
             <span><i class="sw sw-goal"></i>Hospital</span>
             <span><i class="sw sw-wall"></i>Closed</span>
             <span><i class="sw sw-risky"></i>Risky road</span>
             <span><i class="sw sw-blocked"></i>Avoided as blocked</span>
+            <span><i class="sw sw-xp"></i>A* expanded (f = g + h)</span>
+            <span><i class="sw sw-xb"></i>BFS expanded</span>
+            <span><i class="sw sw-xd"></i>Re-plan search</span>
             <span><i class="sw sw-route"></i>Planned route</span>
             <span><i class="sw sw-old"></i>Abandoned route</span>
+            <span><i class="sw sw-ghost"></i>Turn-back route (ghost)</span>
           </div>
           <div class="cell-info" id="cell-info">Click any cell to inspect it.</div>
         </div>
@@ -117,7 +153,7 @@
 
           <div class="card">
             <div class="card-head"><h2>Chance the road is blocked</h2></div>
-            <div class="gauge-num"><span id="gauge-value">—</span><small id="gauge-prior"></small></div>
+            <div class="gauge-num"><span id="gauge-value">—</span><small id="gauge-prior"></small><em class="gauge-flag" id="gauge-flag" hidden>above reroute threshold</em></div>
             <div class="gauge" id="gauge">
               <div class="gauge-fill" id="gauge-fill"></div>
               <div class="gauge-mark" id="gauge-mark" hidden><span id="gauge-mark-label"></span></div>
@@ -194,16 +230,16 @@
       <div class="card">
         <div class="card-head"><h2>How information moves between the algorithms</h2><span class="tag" id="flow-tag">Run a scenario to fill in live values</span></div>
         <div class="flow">
-          <div class="flow-node" style="grid-area:astar"><span class="num">1</span><b>A* search</b><small>plans the fastest route</small></div>
-          <div class="flow-link down" style="grid-area:l1"><span>travel times</span><b id="flow-times">—</b></div>
+          <div class="flow-node" id="fn-astar" style="grid-area:astar"><span class="num">1</span><b>A* search</b><small>plans the fastest route</small></div>
+          <div class="flow-link down" id="fl-1" style="grid-area:l1"><span>travel times</span><b id="flow-times">—</b><i class="track"><i class="packet"></i></i></div>
 
-          <div class="flow-node" style="grid-area:vit"><span class="num">2</span><b>Viterbi</b><small>reads the traffic state</small></div>
-          <div class="flow-link" style="grid-area:l2"><span>prior P(Blocked)</span><b id="flow-prior">—</b></div>
-          <div class="flow-node" style="grid-area:bayes"><span class="num">3</span><b>Bayes</b><small>adds the sensor reading</small></div>
-          <div class="flow-link" style="grid-area:l3"><span>P(Blocked)</span><b id="flow-post">—</b></div>
-          <div class="flow-node" style="grid-area:mdp"><span class="num">4</span><b>MDP</b><small>compares expected values</small></div>
-          <div class="flow-link" style="grid-area:l4"><span>decision</span><b id="flow-action">—</b></div>
-          <div class="flow-node" style="grid-area:replan"><span class="num">5</span><b>A* re-plan</b><small>final route</small></div>
+          <div class="flow-node" id="fn-vit" style="grid-area:vit"><span class="num">2</span><b>Viterbi</b><small>reads the traffic state</small></div>
+          <div class="flow-link" id="fl-2" style="grid-area:l2"><span>prior P(Blocked)</span><b id="flow-prior">—</b><i class="track"><i class="packet"></i></i></div>
+          <div class="flow-node" id="fn-bayes" style="grid-area:bayes"><span class="num">3</span><b>Bayes</b><small>adds the sensor reading</small></div>
+          <div class="flow-link" id="fl-3" style="grid-area:l3"><span>P(Blocked)</span><b id="flow-post">—</b><i class="track"><i class="packet"></i></i></div>
+          <div class="flow-node" id="fn-mdp" style="grid-area:mdp"><span class="num">4</span><b>MDP</b><small>compares expected values</small></div>
+          <div class="flow-link" id="fl-4" style="grid-area:l4"><span>decision</span><b id="flow-action">—</b><i class="track"><i class="packet"></i></i></div>
+          <div class="flow-node" id="fn-replan" style="grid-area:replan"><span class="num">5</span><b>A* re-plan</b><small>final route</small></div>
         </div>
       </div>
 
@@ -298,6 +334,7 @@
           <ul>
             <li><b>Backend:</b> Python and Flask. The algorithms live in <code>astar.py</code>, <code>viterbi.py</code>, <code>bayes.py</code> and <code>mdp.py</code>.</li>
             <li><b>Frontend:</b> HTML, CSS and JavaScript. It only draws what the backend returns.</li>
+            <li><b>Animation:</b> Anime.js plays each run as a timeline you can pause, step and replay (search, route, trellis, Bayes bar); Motion adds counters, springs and page transitions. Both are presentation only.</li>
             <li><b>Tests:</b> <code>python -m unittest -v</code> checks each algorithm, the three scenarios and the web API.</li>
           </ul>
           <h2>Limitations and next steps</h2>
@@ -314,6 +351,11 @@
 
   </main>
 </div>
+<!-- Animation libraries (copied from node_modules by `npm run vendor`; no build step needed) -->
+<script src="{{ url_for('static', filename='vendor/motion.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/anime.min.js') }}"></script>
+<script src="{{ url_for('static', filename='fx.js') }}"></script>
+<script src="{{ url_for('static', filename='geo.js') }}"></script>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

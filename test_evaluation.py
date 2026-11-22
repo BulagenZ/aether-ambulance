@@ -46,6 +46,41 @@ class TestSearchCorrectness(unittest.TestCase):
             self.assertLessEqual(row["astar_expanded"], row["bfs_expanded"])
 
 
+class TestSearchTrace(unittest.TestCase):
+    """The optional traces used by the website must not change results and must be consistent."""
+
+    def test_trace_does_not_change_results_on_random_maps(self):
+        rng = random.Random(7)
+        for i in range(100):
+            grid, start, goal = random_map(rng)
+            a_trace, b_trace = [], []
+            with self.subTest(map=i):
+                self.assertEqual(astar(grid, start, goal), astar(grid, start, goal, trace=a_trace))
+                self.assertEqual(bfs(grid, start, goal), bfs(grid, start, goal, trace=b_trace))
+                self.assertEqual(len(a_trace), astar(grid, start, goal)[1])
+                self.assertEqual(len(b_trace), bfs(grid, start, goal)[1])
+
+    def test_astar_expands_in_non_decreasing_f_order(self):
+        """With a consistent heuristic, A* expands cells in order of non-decreasing f = g + h."""
+        rng = random.Random(11)
+        for i in range(100):
+            grid, start, goal = random_map(rng)
+            trace = []
+            astar(grid, start, goal, trace=trace)
+            f_values = [g + h for _, g, h in trace]
+            with self.subTest(map=i):
+                self.assertEqual(f_values, sorted(f_values))
+                self.assertEqual(trace[0][0], start)
+
+    def test_pipeline_returns_the_search_order(self):
+        a = simulate(resolve_scenario({"scenario": "rush"}))["astar"]
+        self.assertEqual(len(a["search"]), a["expanded"])
+        self.assertEqual(len(a["bfs_search"]), a["bfs_expanded"])
+        self.assertEqual(len(a["detour_search"]), a["detour_expanded"])
+        self.assertEqual(a["search"][-1]["cell"], a["path"][-1])
+        self.assertEqual(len(a["turn_back_path"]) - 1, a["backtrack_minutes"])
+
+
 class TestViterbiCorrectness(unittest.TestCase):
     def test_matches_brute_force_for_every_observation_sequence(self):
         """Check every one of the 2^3 state sequences by hand and keep the most likely."""

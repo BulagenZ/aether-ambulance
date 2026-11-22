@@ -6,8 +6,11 @@ shows how many cells A*'s heuristic saves while finding a route of the same leng
 from collections import deque
 
 
-def bfs(grid, start, goal, extra_blocked=()):
-    """Return (path, expanded_count), like astar(). path is None if there is no route."""
+def bfs(grid, start, goal, extra_blocked=(), trace=None):
+    """Return (path, expanded_count), like astar(). path is None if there is no route.
+
+    trace: optional list; if given, every expanded cell is appended in expansion order.
+    """
     rows, cols = len(grid), len(grid[0])
     blocked = set(extra_blocked)
 
@@ -18,6 +21,8 @@ def bfs(grid, start, goal, extra_blocked=()):
     while frontier:
         cell = frontier.popleft()
         expanded += 1
+        if trace is not None:
+            trace.append(cell)
 
         if cell == goal:
             path = []

@@ -19,11 +19,13 @@ def find(grid, symbol):
     raise ValueError(f"symbol {symbol!r} not on the grid")
 
 
-def astar(grid, start, goal, extra_blocked=()):
+def astar(grid, start, goal, extra_blocked=(), trace=None):
     """Return (path, expanded_count). path is a list of (row, col) or None if no route.
 
     extra_blocked: cells to treat as closed in addition to '#' cells
     (used when the agent decides a road is blocked and re-plans).
+    trace: optional list; if given, (cell, g, h) is appended for every expanded cell,
+    in expansion order (used by the website to show the search). Results are unchanged.
     """
     rows, cols = len(grid), len(grid[0])
     blocked = set(extra_blocked)
@@ -39,6 +41,8 @@ def astar(grid, start, goal, extra_blocked=()):
         if g > best_g[cell]:
             continue  # an older, worse entry for this cell
         expanded += 1
+        if trace is not None:
+            trace.append((cell, g, manhattan(cell, goal)))
 
         if cell == goal:
             path = []
