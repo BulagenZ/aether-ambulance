@@ -2,8 +2,10 @@
   "name": "aether-ambulance",
   "private": true,
   "description": "Front-end tooling for the AETHER dashboard. Not needed to run the site: the animation libraries are already copied into static/vendor/. Used for `npm run vendor` and the browser test `npm run test:ui`.",
+  "license": "MIT",
+  "author": "Bulabai Bakytzhanuly",
   "scripts": {
-    "vendor": "node -e \"const f=require('fs');f.mkdirSync('static/vendor',{recursive:true});f.copyFileSync('node_modules/motion/dist/motion.js','static/vendor/motion.min.js');f.copyFileSync('node_modules/animejs/dist/bundles/anime.umd.min.js','static/vendor/anime.min.js');console.log('vendor files updated')\"",
+    "vendor": "node -e \"const f=require('fs');f.mkdirSync('static/vendor',{recursive:true});f.copyFileSync('node_modules/motion/dist/motion.js','static/vendor/motion.min.js');f.copyFileSync('node_modules/motion/LICENSE.md','static/vendor/LICENSE-motion.md');f.copyFileSync('node_modules/animejs/dist/bundles/anime.umd.min.js','static/vendor/anime.min.js');f.copyFileSync('node_modules/animejs/LICENSE.md','static/vendor/LICENSE-animejs.md');console.log('vendor files updated')\"",
     "test:ui": "node ui-test/run.js"
   },
   "dependencies": {

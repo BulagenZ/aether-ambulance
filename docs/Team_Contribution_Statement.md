@@ -4,12 +4,12 @@
 **Course:** AI Fundamentals — Final Project
 **Instructors:** Aizhan Sydykova, Dilnura Ali
 
-This is an **individual project**. It was completed by one student, who is responsible for all parts of it.
+This is an **individual project** with one team member, who is responsible for the project, its submission and its defense.
 
 | Team member | Group | Role | Contribution |
 |---|---|---|---|
-| Bulabai Bakytzhanuly | 2 | Sole developer and presenter | 100%: topic selection, design decisions, implementation review, testing, documentation, presentation, demo video and defense |
+| Bulabai Bakytzhanuly | 2 | Sole team member | Approved the topic and design, specified the website requirements, chose the animation libraries, created the GitHub repository, reviewed all published material, presents and defends the project |
 
-AI assistance was used as described in [AI_Usage_Declaration.md](AI_Usage_Declaration.md).
+Code, tests and documents were produced with AI assistance. The student's own work and the AI-assisted parts are listed in [AI_Usage_Declaration.md](AI_Usage_Declaration.md).
 
 Signature: ______________________ Date: ______________

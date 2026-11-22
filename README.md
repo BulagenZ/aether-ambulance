@@ -141,6 +141,7 @@ test_project.py  test_web.py  test_evaluation.py    42 automated Python tests
 ui-test/run.js                           34 automated browser checks (npm run test:ui)
 package.json                             front-end tool versions (not needed to run the site)
 run.bat                                  one-click launcher for Windows
+LICENSE                                  MIT licence (third-party licences in static/vendor/)
 .github/workflows/tests.yml              runs the tests on GitHub after every push
 docs/                                    report, slides, video, screenshots, declarations
 ```
@@ -173,3 +174,7 @@ Invalid input returns HTTP 400 with an `error` message.
 ## AI usage
 
 This project was developed with the assistance of Claude (Anthropic). See [docs/AI_Usage_Declaration.md](docs/AI_Usage_Declaration.md).
+
+## Licence
+
+Released under the [MIT Licence](LICENSE), © 2026 Bulabai Bakytzhanuly. The bundled animation libraries, Motion and Anime.js, are third-party code under their own MIT licences: see [static/vendor/README.md](static/vendor/README.md).
