@@ -283,13 +283,14 @@
         <div class="card">
           <div class="card-head"><h2>Automated tests</h2><span class="tag">python -m unittest -v</span></div>
           <ul class="checklist">
-            <li>A* gives the same route length as BFS on 300 random maps</li>
+            <li>A* gives the same route length as BFS on 300 random maps and expands cells in non-decreasing f order</li>
             <li>Viterbi matches a brute-force check of every state sequence</li>
             <li>Bayes results match hand calculations and always sum to 1</li>
             <li>MDP Q-values match hand calculations; the decision flips exactly at the threshold</li>
             <li>The three scenarios give the same answers as the console program</li>
             <li>The web API rejects bad input with clear error messages</li>
             <li>AETHER beats every simple rule in the trip simulation</li>
+            <li>34 browser checks replay the dashboard: stage order, controls, all scenarios, phone layout (npm run test:ui)</li>
           </ul>
         </div>
       </div>

@@ -17,7 +17,7 @@ The shortest road to the hospital may be blocked. Driving in and turning back co
 | Working application | This repository: `run.bat` or `python app.py` (see [Quick start](#quick-start)) |
 | Technical report | [docs/AETHER_Technical_Report.pdf](docs/AETHER_Technical_Report.pdf) ([Word version](docs/AETHER_Technical_Report.docx)) |
 | Presentation (7 slides) | [docs/AETHER_Presentation.pptx](docs/AETHER_Presentation.pptx) |
-| Demo video (2.5 min) | [docs/demo/AETHER_demo.mp4](docs/demo/AETHER_demo.mp4) |
+| Demo video (2 min, captioned) | [docs/demo/AETHER_demo.mp4](docs/demo/AETHER_demo.mp4) |
 | AI usage declaration | [docs/AI_Usage_Declaration.md](docs/AI_Usage_Declaration.md) |
 | Team contribution statement | [docs/Team_Contribution_Statement.md](docs/Team_Contribution_Statement.md) |
 | Screenshots | [docs/screenshots/](docs/screenshots/) |
@@ -48,16 +48,25 @@ Then open <http://127.0.0.1:5000>. Keep the terminal open while using the site; 
 
 | Command | What it does |
 |---|---|
-| `python -m unittest -v` | Runs the 39 automated tests |
+| `python -m unittest -v` | Runs the 42 automated Python tests |
 | `python evaluate.py` | Prints the evaluation: A* vs BFS, all 16 inputs, 10,000-trip policy comparison |
 | `python main.py rush` | Console version (also `calm` and `mixed`) |
+| `npm install` then `npm run test:ui` | Optional: 34 automated browser checks of the dashboard (needs Node.js and Chrome or Edge) |
 
 ## Using the dashboard
 
 1. Pick a scenario — **Rush hour**, **Quiet night** or **Jam history, silent sensor** — or toggle the speed reports and sensor to build a **Custom** one.
-2. Press **Run simulation**. The five stages run on the Python backend; the map, decision panel, probability gauge and travel-time bars update, and each stage card shows its input, calculation, output and explanation.
-3. Click any map cell to inspect it. **Reset** clears the run.
-4. The sidebar opens **Algorithms**, **Data flow**, **Results**, **Assumptions** and **Project info**.
+2. Press **Run simulation**. The Python backend computes all five stages at once; the dashboard then plays them back as an animation:
+   - **A\* search:** each expanded cell lights up in order with its `f = g + h`; turn on **Compare with BFS** to see BFS explore 13 cells for the same route.
+   - **Route:** drawn as one line; a top-down ambulance follows it. When the agent reroutes, the blocked road shakes, A\* re-plans (purple cells), and a grey ghost drives the 19-minute turn-back route next to the real 15-minute detour.
+   - **Viterbi:** a trellis fills in column by column and the best path is traced backwards.
+   - **Bayes:** a bar shows prior → × likelihood → ÷ P(observation).
+   - **MDP:** expected values count up and the decision appears; the gauge marks the 0.77 reroute threshold.
+3. Control the playback: **▶ / ❚❚**, **Next stage**, **Skip to end**, **Replay**, the stage buttons **1–5** (jump to any stage, also backwards), speed **0.5× / 1× / 2×** and **Pause after each stage** (useful when presenting). Keyboard: **Space** = play/pause, **→** = next stage.
+4. Click any map cell to inspect it (for example how A\* scored it). **Reset** clears the run.
+5. The sidebar opens **Algorithms**, **Data flow** (packets carry the live values between algorithms), **Results**, **Assumptions** and **Project info**.
+
+Animations use **Anime.js** (the run timeline) and **Motion** (counters, springs, page transitions). Both are copied into `static/vendor/`, so no build step or internet connection is needed. With the system's *reduce motion* setting on, results appear immediately.
 
 ## The algorithms and how they work together
 
@@ -100,16 +109,19 @@ The trips are drawn from the same invented model the agent uses, so this checks 
 
 ## Testing
 
-`python -m unittest -v` runs **39 tests**, all passing:
+`python -m unittest -v` runs **42 tests**, all passing:
 
 - every algorithm against hand-computed values;
 - A\* against BFS on 300 random maps, and Viterbi against a brute-force check of every state sequence;
+- A\* expands cells in non-decreasing `f` order, and the search traces shown on the map never change the results;
 - properties: Bayes posteriors sum to 1, and the MDP decision flips exactly at the threshold;
 - the website returns exactly the same results as the console program for all three scenarios;
 - the web API, including 7 kinds of invalid input (HTTP 400), unknown paths (404) and wrong methods (405);
 - the evaluation: all 16 inputs covered, and AETHER beats every simple rule for three random seeds.
 
-The tests run automatically on GitHub after every push, on Windows and Linux with Python 3.10 and 3.12 (see the badge at the top and the **Actions** tab). The frontend was also checked in a browser: every button, all pages, the error banner and the phone layout.
+The Python tests run automatically on GitHub after every push, on Windows and Linux with Python 3.10 and 3.12 (see the badge at the top and the **Actions** tab).
+
+`npm run test:ui` runs **34 browser checks** in headless Chrome against a live server: no stage shows its result early, every playback control works (including jumping backwards and resizing mid-run), all four scenarios give the backend's numbers, the pages and phone layout work, reduced motion shows the result at once, and there are no JavaScript errors.
 
 ## Project structure
 
@@ -117,12 +129,17 @@ The tests run automatically on GitHub after every push, on Windows and Linux wit
 astar.py  viterbi.py  bayes.py  mdp.py   the four algorithms (pure Python, standard library only)
 bfs.py                                   BFS baseline used to evaluate A*
 main.py                                  console program, the three scenarios and every assumed value
-pipeline.py                              runs the five stages and returns all intermediate results
+pipeline.py                              runs the five stages and returns all intermediate results (incl. search order)
 evaluate.py                              testing and results: search comparison, all inputs, policy comparison
 app.py                                   Flask server: page + JSON API with error handling
 templates/index.html                     dashboard structure
-static/style.css, static/app.js          design and drawing (no results are computed in the browser)
-test_project.py  test_web.py  test_evaluation.py    39 automated tests
+static/app.js                            dashboard logic and the Anime.js playback timeline (draws backend results only)
+static/fx.js, static/geo.js              Motion interface effects; map geometry for drawing routes
+static/style.css                         design
+static/vendor/                           Anime.js and Motion browser builds (from npm run vendor)
+test_project.py  test_web.py  test_evaluation.py    42 automated Python tests
+ui-test/run.js                           34 automated browser checks (npm run test:ui)
+package.json                             front-end tool versions (not needed to run the site)
 run.bat                                  one-click launcher for Windows
 .github/workflows/tests.yml              runs the tests on GitHub after every push
 docs/                                    report, slides, video, screenshots, declarations
@@ -140,11 +157,11 @@ Invalid input returns HTTP 400 with an `error` message.
 
 ## Screenshots
 
-| Results | Algorithms |
+| A\* search compared with BFS | Viterbi trellis and Bayes bar |
 |---|---|
-| ![Results page](docs/screenshots/04-results.png) | ![Algorithms page](docs/screenshots/06-algorithms.png) |
-| **Stage-by-stage calculations** | **Phone layout** |
-| ![Stage cards](docs/screenshots/02-stages-rush.png) | ![Phone layout](docs/screenshots/09-mobile.png) |
+| ![A* expanding cells with f = g + h, BFS in amber](docs/screenshots/10-search-bfs.png) | ![Stage cards](docs/screenshots/02-stages-rush.png) |
+| **Results** | **Phone layout** |
+| ![Results page](docs/screenshots/04-results.png) | ![Phone layout](docs/screenshots/09-mobile.png) |
 
 ## Limitations and future work
 

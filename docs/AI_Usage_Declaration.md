@@ -13,8 +13,9 @@
 
 - Proposing the project idea and the five-stage pipeline design.
 - Writing the Python algorithm modules (`astar.py`, `viterbi.py`, `bayes.py`, `mdp.py`, `bfs.py`), the console program (`main.py`), the evaluation (`evaluate.py`) and the Flask backend (`app.py`, `pipeline.py`).
-- Writing the web dashboard (`templates/`, `static/`).
-- Writing the automated tests (`test_*.py`).
+- Writing the web dashboard (`templates/`, `static/`), including the Anime.js playback timeline and the Motion interface effects.
+- Adding the optional search traces to `astar.py` and `bfs.py` that the map animation replays.
+- Writing the automated tests (`test_*.py` and the browser test `ui-test/run.js`).
 - Drafting the README, the technical report, the presentation and recording the captioned demo video.
 
 ## My own work
